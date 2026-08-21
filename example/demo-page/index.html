@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SecureWebView demo page</title>
+    <style>
+      body {
+        font-family: -apple-system, Roboto, sans-serif;
+        margin: 0;
+        padding: 16px;
+        background: #f5f6f8;
+      }
+      h1 {
+        font-size: 20px;
+      }
+      a,
+      button {
+        display: block;
+        box-sizing: border-box;
+        width: 100%;
+        margin: 10px 0;
+        padding: 14px;
+        border: none;
+        border-radius: 10px;
+        background: #1c1c27;
+        color: #fff;
+        font-size: 15px;
+        text-align: center;
+        text-decoration: none;
+      }
+      .note {
+        color: #555;
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>SecureWebView demo page</h1>
+    <p class="note">
+      Each control below exercises one navigation-policy behavior. Watch the
+      event log in the example app.
+    </p>
+
+    <a href="/page2.html">Same-origin navigation (allowed)</a>
+    <a href="https://example.com/">Cross-origin navigation (blocked)</a>
+    <a href="myapp://pay/complete?order=42">Deep link: myapp:// (intercepted)</a>
+    <a href="unknownscheme://whatever">Unknown scheme (blocked)</a>
+    <button id="post">Send a message to React Native</button>
+
+    <script>
+      document.getElementById('post').addEventListener('click', function () {
+        if (window.ReactNativeSecureWebView) {
+          window.ReactNativeSecureWebView.postMessage(
+            JSON.stringify({ kind: 'demo', sentAt: Date.now() })
+          );
+        } else {
+          alert('Bridge unavailable (page not inside SecureWebView).');
+        }
+      });
+    </script>
+  </body>
+</html>

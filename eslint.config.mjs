@@ -24,6 +24,16 @@ export default defineConfig([
     },
   },
   {
-    ignores: ['node_modules/', 'lib/'],
+    // The *.config.js ignores work around ESLint's synchronous Babel loader,
+    // which cannot import the ESM-only react-native-builder-bob babel preset.
+    ignores: [
+      'node_modules/',
+      'lib/',
+      '**/babel.config.js',
+      '**/jest.config.js',
+      '**/metro.config.js',
+      '**/react-native.config.js',
+      'example/index.js',
+    ],
   },
 ]);

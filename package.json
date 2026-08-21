@@ -36,23 +36,31 @@
     "clean": "del-cli android/build example/android/build example/android/app/build example/ios/build lib",
     "prepare": "bob build",
     "typecheck": "tsc",
+    "test": "jest",
     "lint": "eslint \"**/*.{js,ts,tsx}\""
   },
   "keywords": [
     "react-native",
+    "webview",
+    "secure-webview",
+    "security",
+    "fabric",
+    "checkout",
+    "oauth",
+    "deep-link",
     "ios",
     "android"
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/adnansahinovic/react-native-secure-webview.git"
+    "url": "git+https://github.com/adnxy/react-native-secure-webview.git"
   },
-  "author": "Adnan Sahinovic <adnan@example.com> (https://github.com/adnansahinovic)",
+  "author": "Adnan Sahinovic <adnanpoviolabs@gmail.com> (https://github.com/adnxy)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/adnansahinovic/react-native-secure-webview/issues"
+    "url": "https://github.com/adnxy/react-native-secure-webview/issues"
   },
-  "homepage": "https://github.com/adnansahinovic/react-native-secure-webview#readme",
+  "homepage": "https://github.com/adnxy/react-native-secure-webview#readme",
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },
@@ -62,16 +70,21 @@
     "@eslint/js": "^10.0.1",
     "@react-native/babel-preset": "0.85.0",
     "@react-native/eslint-config": "0.85.0",
+    "@react-native/jest-preset": "0.85.0",
+    "@types/jest": "^29.5.14",
     "@types/react": "^19.2.0",
+    "@types/react-test-renderer": "^19.1.0",
     "del-cli": "^7.0.0",
     "eslint": "^9.39.4",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-ft-flow": "^3.0.11",
     "eslint-plugin-prettier": "^5.5.6",
+    "jest": "^29.7.0",
     "prettier": "^3.8.3",
     "react": "19.2.3",
     "react-native": "0.85.0",
     "react-native-builder-bob": "^0.43.0",
+    "react-test-renderer": "19.2.3",
     "turbo": "^2.9.16",
     "typescript": "^6.0.3"
   },
@@ -102,7 +115,7 @@
     ]
   },
   "codegenConfig": {
-    "name": "SecureWebviewViewSpec",
+    "name": "SecureWebViewSpec",
     "type": "all",
     "jsSrcsDir": "src",
     "android": {
@@ -110,8 +123,8 @@
     },
     "ios": {
       "components": {
-        "SecureWebviewView": {
-          "className": "SecureWebviewView"
+        "SecureWebView": {
+          "className": "SecureWebView"
         }
       }
     }

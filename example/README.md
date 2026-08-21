@@ -1,3 +1,18 @@
+# SecureWebView example
+
+The app in `src/App.tsx` has one preset tab per library behavior: allowed
+browsing, blocked origin, deep links + Web→RN messaging, ephemeral session, and
+load errors. Every callback is shown in the on-screen event log.
+
+The **Demo page** preset loads a local page (`demo-page/`) that exercises deep
+links, blocked schemes, and `postMessage`. Serve it before selecting that tab:
+
+```sh
+yarn demo-page   # http://localhost:8087 (Android emulator: http://10.0.2.2:8087)
+```
+
+---
+
 This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
 
 # Getting Started
