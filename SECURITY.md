@@ -122,5 +122,8 @@ defend against:
 
 ## Reporting a vulnerability
 
-Please open a private security advisory (or contact the maintainers directly)
-rather than filing a public issue for anything exploitable.
+Please report anything exploitable privately via
+[GitHub security advisories](https://github.com/adnxy/react-native-secure-webview/security/advisories/new)
+(or contact the maintainers directly) rather than filing a public issue.
+You should receive a response within a few days; please allow a fix to be
+released before public disclosure.

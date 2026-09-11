@@ -75,7 +75,26 @@ To fix formatting errors, run the following:
 yarn lint --fix
 ```
 
+### Tests
 
+The navigation policy is specified in `src/policy.ts` and mirrored natively in
+`ios/SecureWebViewPolicy.mm` and `android/.../UrlPolicy.kt`. The TypeScript
+suite is the reference; the Android suite (`android/src/test/`) asserts parity.
+**If you change the policy, update all three implementations and both test
+suites.**
+
+Run the JS/TS tests (policy + wrapper):
+
+```sh
+yarn test
+```
+
+Run the native Android policy tests:
+
+```sh
+cd example/android
+./gradlew :react-native-secure-webview:testDebugUnitTest
+```
 
 ### Scripts
 
@@ -83,11 +102,25 @@ The `package.json` file contains various scripts for common tasks:
 
 - `yarn`: setup project by installing dependencies.
 - `yarn typecheck`: type-check files with TypeScript.
-  - `yarn lint`: lint files with [ESLint](https://eslint.org/).
-    - `yarn example start`: start the Metro server for the example app.
+- `yarn lint`: lint files with [ESLint](https://eslint.org/).
+- `yarn test`: run unit tests with [Jest](https://jestjs.io/).
+- `yarn example start`: start the Metro server for the example app.
 - `yarn example android`: run the example app on Android.
 - `yarn example ios`: run the example app on iOS.
-  
+
+### Releasing (maintainers)
+
+1. Update the version in `package.json` and add a `CHANGELOG.md` entry.
+2. Commit, then tag and push:
+
+   ```sh
+   git tag vX.Y.Z && git push --follow-tags
+   ```
+
+3. The [release workflow](./.github/workflows/release.yml) lints, tests,
+   builds, verifies the tag matches `package.json`, and publishes to npm with
+   provenance. It requires the `NPM_TOKEN` repository secret.
+
 ### Sending a pull request
 
 > **Working on your first pull request?** You can learn how from this _free_ series: [How to Contribute to an Open Source Project on GitHub](https://app.egghead.io/playlists/how-to-contribute-to-an-open-source-project-on-github).
