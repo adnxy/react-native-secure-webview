@@ -20,6 +20,8 @@
     "cpp",
     "*.podspec",
     "react-native.config.js",
+    "SECURITY.md",
+    "CHANGELOG.md",
     "!ios/build",
     "!android/build",
     "!android/gradle",
@@ -89,8 +91,8 @@
     "typescript": "^6.0.3"
   },
   "peerDependencies": {
-    "react": "*",
-    "react-native": "*"
+    "react": ">=19.0.0",
+    "react-native": ">=0.85.0"
   },
   "workspaces": [
     "example"

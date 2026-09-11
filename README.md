@@ -1,5 +1,9 @@
 # react-native-secure-webview
 
+[![CI](https://github.com/adnxy/react-native-secure-webview/actions/workflows/ci.yml/badge.svg)](https://github.com/adnxy/react-native-secure-webview/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/react-native-secure-webview.svg)](https://www.npmjs.com/package/react-native-secure-webview)
+[![license](https://img.shields.io/npm/l/react-native-secure-webview.svg)](https://github.com/adnxy/react-native-secure-webview/blob/main/LICENSE)
+
 A Fabric-native WebView for controlled web flows: authentication, checkout, OAuth redirects, and 3-D Secure challenges.
 
 Instead of a general purpose browser view, this library gives you a WebView that denies by default. Every top-level navigation is validated natively against an explicit origin allowlist, custom scheme redirects are intercepted and surfaced as events instead of being loaded, and the web-to-native bridge is a single string-only method.
@@ -11,7 +15,7 @@ Instead of a general purpose browser view, this library gives you a WebView that
 - **Native enforcement.** Server redirects never reach JS, so the policy runs in native code on both platforms.
 - **Fail closed.** Invalid configuration entries are dropped, unknown URLs are blocked, and unsupported features raise errors instead of silently degrading.
 
-See [SECURITY.md](./SECURITY.md) for the threat model and what this library does not protect against, and [docs/FABRIC_ARCHITECTURE.md](./docs/FABRIC_ARCHITECTURE.md) for a code-level tour of the component.
+See [SECURITY.md](https://github.com/adnxy/react-native-secure-webview/blob/main/SECURITY.md) for the threat model and what this library does not protect against, and [docs/FABRIC_ARCHITECTURE.md](https://github.com/adnxy/react-native-secure-webview/blob/main/docs/FABRIC_ARCHITECTURE.md) for a code-level tour of the component.
 
 ## Requirements
 
@@ -71,7 +75,7 @@ function Checkout() {
 | `onNavigation` | `(e) => void` | Navigation state changed: `{ url, loading, canGoBack, canGoForward }`. |
 | `onDeepLink` | `(e) => void` | An allow-listed custom scheme navigation was intercepted: `{ url, scheme }`. The URL is not loaded. |
 | `onMessage` | `(e) => void` | The page called `window.ReactNativeSecureWebView.postMessage(string)`: `{ data }`. Strings only, main frame only, allow-listed origins only. |
-| `onError` | `(e) => void` | A load failed: `{ code, message, url? }`. Codes are platform-prefixed (`ios_-1009`, `android_-2`) or library-level (`ephemeral_not_supported`). |
+| `onError` | `(e) => void` | A load failed or the component degraded: `{ code, message, url? }`. Codes are platform-prefixed (`ios_-1009`, `android_-2`), renderer-crash codes (`android_render_process_gone`, `ios_content_process_terminated` — recover with `reload()`), or library-level (`ephemeral_not_supported`, `message_bridge_not_supported`). |
 | `onSecurityViolation` | `(e) => void` | A navigation was blocked: `{ type, url }` where `type` is `origin_not_allowed`, `scheme_not_allowed`, or `invalid_url`. |
 
 ### Commands (via `ref`)
@@ -106,6 +110,8 @@ window.ReactNativeSecureWebView.postMessage('a string');
 ```
 
 That is the entire bridge. No RN-to-web messaging, no JS injection, no typed RPC.
+
+Messages are accepted only from the **main frame** and only from **allow-listed origins**, enforced natively on both platforms: iOS validates the sender frame and origin in the `WKScriptMessageHandler`; Android injects the bridge object exclusively into allow-listed main-frame origins via `WebViewCompat.addWebMessageListener` origin rules (and re-validates each message). On the rare Android system WebView too old for `WEB_MESSAGE_LISTENER`, the bridge is not installed at all — fail closed — and `onError` fires once with `message_bridge_not_supported`.
 
 ## Example app
 

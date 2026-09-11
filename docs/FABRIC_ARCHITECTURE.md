@@ -157,8 +157,9 @@ generated code:
   (mixed content never allowed, no file/content access, no multiple windows),
   a `WebViewClient` whose `shouldOverrideUrlLoading` +
   `shouldInterceptRequest` (safety net for redirects and history navigations)
-  enforce `UrlPolicy.kt`, and a single `@JavascriptInterface` method exposed as
-  `window.ReactNativeSecureWebView`.
+  enforce `UrlPolicy.kt`, and an origin-restricted message bridge exposed as
+  `window.ReactNativeSecureWebView` via `WebViewCompat.addWebMessageListener`
+  (injected only into allow-listed main-frame origins; see SECURITY.md).
 - Events are emitted through `UIManagerHelper.getEventDispatcherForReactTag`
   with the Fabric `surfaceId` (`SecureWebViewEvent.kt`), using the `"topX"` →
   `onX` naming convention that the generated event emitter expects.

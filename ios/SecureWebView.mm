@@ -376,6 +376,22 @@ static NSString *SWVViolationTypeString(SWVPolicyDecision decision)
   [self emitNavigationStateWithLoading:NO];
 }
 
+/// The web content process died (crash or OS termination under memory
+/// pressure). WKWebView shows a blank view afterwards; surface a structured
+/// error so the app can decide to reload().
+- (void)webViewWebContentProcessDidTerminate:(WKWebView *)webView
+{
+  const auto *emitter = [self eventEmitter];
+  if (emitter != nullptr) {
+    emitter->onError({
+        .code = "ios_content_process_terminated",
+        .message = "The web content process was terminated (crash or memory pressure).",
+        .url = SWVStdString(webView.URL.absoluteString),
+    });
+  }
+  [self emitNavigationStateWithLoading:NO];
+}
+
 #pragma mark - WKUIDelegate
 
 /// Blocks popups/new windows: returning nil refuses to create the child

@@ -29,6 +29,10 @@ export default defineConfig([
     ignores: [
       'node_modules/',
       'lib/',
+      'android/build/',
+      'example/android/build/',
+      'example/android/app/build/',
+      'example/ios/build/',
       '**/babel.config.js',
       '**/jest.config.js',
       '**/metro.config.js',

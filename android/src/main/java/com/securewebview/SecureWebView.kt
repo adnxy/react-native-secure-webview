@@ -1,8 +1,11 @@
 package com.securewebview
 
 import android.annotation.SuppressLint
+import android.annotation.TargetApi
 import android.graphics.Bitmap
-import android.webkit.JavascriptInterface
+import android.net.Uri
+import android.os.Build
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -10,6 +13,10 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
+import androidx.webkit.JavaScriptReplyProxy
+import androidx.webkit.WebMessageCompat
+import androidx.webkit.WebViewCompat
+import androidx.webkit.WebViewFeature
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.WritableMap
 import com.facebook.react.uimanager.ThemedReactContext
@@ -30,13 +37,16 @@ class SecureWebView(private val reactContext: ThemedReactContext) : FrameLayout(
 
   companion object {
     /**
-     * The single object this library exposes to page JavaScript. One method
-     * (postMessage(String)) and nothing else; see [MessageBridge]. The name
-     * matches the iOS user-script shim so web content is platform-agnostic.
+     * The single object this library exposes to page JavaScript, injected via
+     * [WebViewCompat.addWebMessageListener] — *only* into main frames whose
+     * origin is allow-listed. The name matches the iOS user-script shim so web
+     * content is platform-agnostic.
      */
     private const val JS_BRIDGE_NAME = "ReactNativeSecureWebView"
 
     const val ERROR_EPHEMERAL_NOT_SUPPORTED = "ephemeral_not_supported"
+    const val ERROR_MESSAGE_BRIDGE_NOT_SUPPORTED = "message_bridge_not_supported"
+    const val ERROR_RENDER_PROCESS_GONE = "android_render_process_gone"
   }
 
   // Read from the WebView network thread in shouldInterceptRequest.
@@ -97,7 +107,8 @@ class SecureWebView(private val reactContext: ThemedReactContext) : FrameLayout(
     }
     emittedEphemeralError = false
 
-    ensureWebView()
+    val view = ensureWebView()
+    updateMessageBridge(view)
     if (sourceUri.isNotEmpty() && sourceUri != loadedSourceUri) {
       loadedSourceUri = sourceUri
       loadSource()
@@ -142,8 +153,8 @@ class SecureWebView(private val reactContext: ThemedReactContext) : FrameLayout(
     val view = webView ?: return
     webView = null
     loadedSourceUri = null
+    registeredBridgeRules = null
     view.stopLoading()
-    view.removeJavascriptInterface(JS_BRIDGE_NAME)
     removeView(view)
     view.destroy()
   }
@@ -156,7 +167,8 @@ class SecureWebView(private val reactContext: ThemedReactContext) : FrameLayout(
     val view = WebView(context)
     view.settings.apply {
       // Auth/checkout/OAuth pages require script; this does NOT expose any
-      // native surface beyond the single MessageBridge method below.
+      // native surface beyond the origin-restricted message bridge (see
+      // updateMessageBridge).
       javaScriptEnabled = true
       domStorageEnabled = true
 
@@ -169,11 +181,6 @@ class SecureWebView(private val reactContext: ThemedReactContext) : FrameLayout(
       setGeolocationEnabled(false)
     }
     view.webViewClient = PolicyWebViewClient()
-    // Justified use of addJavascriptInterface (see SECURITY.md): it is the
-    // only Web → RN messaging mechanism on Android. minSdk 24 is far above
-    // the API 17 @JavascriptInterface boundary, and the object exposes a
-    // single method taking a String.
-    view.addJavascriptInterface(MessageBridge(), JS_BRIDGE_NAME)
     view.layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
     addView(view)
     webView = view
@@ -262,14 +269,75 @@ class SecureWebView(private val reactContext: ThemedReactContext) : FrameLayout(
 
   // ── Web → RN bridge ────────────────────────────────────────────────────────
 
-  private inner class MessageBridge {
-    /** Invoked on a WebView-internal thread; hop to the UI thread to emit. */
-    @JavascriptInterface
-    fun postMessage(data: String?) {
-      if (data == null) return
-      post {
-        if (!dropped) emitMessage(data)
+  /** The origin rules the bridge is currently registered with, or null if none. */
+  private var registeredBridgeRules: Set<String>? = null
+  private var emittedBridgeUnsupported = false
+
+  /**
+   * Web → RN messages arrive through [WebViewCompat.addWebMessageListener],
+   * which — unlike addJavascriptInterface — injects the page-side object only
+   * into frames whose origin matches the allow-listed rules, and reports the
+   * sender's frame and origin for every message. Both are enforced here again
+   * (defense in depth), matching the iOS WKScriptMessageHandler checks.
+   */
+  private val messageListener =
+    WebViewCompat.WebMessageListener {
+      _: WebView,
+      message: WebMessageCompat,
+      sourceOrigin: Uri,
+      isMainFrame: Boolean,
+      _: JavaScriptReplyProxy,
+      ->
+      if (dropped || !isMainFrame) return@WebMessageListener
+      val canonical = UrlPolicy.canonicalHttpOrigin(sourceOrigin.toString())
+      if (canonical == null || !allowedOrigins.contains(canonical)) return@WebMessageListener
+      if (message.type != WebMessageCompat.TYPE_STRING) return@WebMessageListener
+      val data = message.data ?: return@WebMessageListener
+      emitMessage(data)
+    }
+
+  /**
+   * (Re-)register the bridge so its origin rules track [allowedOrigins].
+   * Canonical origins ("scheme://host:port") are valid WebMessageListener
+   * origin rules. Fails closed: if the platform WebView does not support
+   * WEB_MESSAGE_LISTENER, no bridge is installed at all and a structured
+   * error is emitted once (see SECURITY.md).
+   */
+  private fun updateMessageBridge(view: WebView) {
+    if (!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) {
+      if (!emittedBridgeUnsupported) {
+        emittedBridgeUnsupported = true
+        emitError(
+          ERROR_MESSAGE_BRIDGE_NOT_SUPPORTED,
+          "The system WebView is too old to support origin-restricted web " +
+            "messaging (WebViewFeature.WEB_MESSAGE_LISTENER). The " +
+            "ReactNativeSecureWebView bridge was not installed (fail closed); " +
+            "page content loads normally but onMessage will never fire.",
+          sourceUri,
+        )
       }
+      return
+    }
+
+    val rules = allowedOrigins
+    if (rules == registeredBridgeRules) return
+    if (registeredBridgeRules != null) {
+      WebViewCompat.removeWebMessageListener(view, JS_BRIDGE_NAME)
+      registeredBridgeRules = null
+    }
+    if (rules.isEmpty()) return
+    try {
+      WebViewCompat.addWebMessageListener(view, JS_BRIDGE_NAME, rules, messageListener)
+      registeredBridgeRules = rules
+    } catch (e: IllegalArgumentException) {
+      // A rule was rejected by the platform. Origins are canonicalized in JS,
+      // so this should be unreachable — but if it happens, fail closed.
+      emitError(
+        ERROR_MESSAGE_BRIDGE_NOT_SUPPORTED,
+        "The platform rejected a message-bridge origin rule: ${e.message}. " +
+          "The bridge was not installed (fail closed).",
+        sourceUri,
+      )
     }
   }
 
@@ -347,6 +415,33 @@ class SecureWebView(private val reactContext: ThemedReactContext) : FrameLayout(
         request.url?.toString() ?: "",
       )
       emitNavigation(loading = false)
+    }
+
+    /**
+     * The WebView renderer died (crash or OS kill under memory pressure).
+     * Returning false — the default — kills the entire app process. Instead,
+     * the dead WebView is torn down, a fresh (blank) one is created, and a
+     * structured error is emitted; calling reload() re-loads the source.
+     */
+    @TargetApi(Build.VERSION_CODES.O) // callback only fires on API 26+
+    override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+      val failedUrl = view.url ?: sourceUri
+      tearDownWebView()
+      if (!dropped) {
+        val fresh = ensureWebView()
+        updateMessageBridge(fresh)
+        emitError(
+          ERROR_RENDER_PROCESS_GONE,
+          if (detail.didCrash()) {
+            "The WebView renderer process crashed."
+          } else {
+            "The WebView renderer process was killed by the system " +
+              "(likely memory pressure)."
+          },
+          failedUrl,
+        )
+      }
+      return true
     }
   }
 }

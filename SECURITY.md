@@ -21,6 +21,18 @@ WebView to refuse everything else. Concretely:
    `window.ReactNativeSecureWebView.postMessage(string)`. Messages are accepted
    only from the **main frame**, only from **allow-listed origins**, and only if
    the payload is a **string**. There is no RN→Web channel and no JS injection.
+   - **iOS**: a fixed `WKUserScript` shim posts to a `WKScriptMessageHandler`,
+     which validates the sender frame (`isMainFrame`) and canonicalizes and
+     checks the sender's `WKSecurityOrigin` against the allowlist.
+   - **Android**: the bridge object is injected via
+     `WebViewCompat.addWebMessageListener` with the canonical allowlist as
+     origin rules — the object *does not exist* in non-allow-listed or
+     sub-frame contexts (unlike `addJavascriptInterface`, which is injected
+     into every frame and is deliberately not used). Each message's
+     `sourceOrigin` and `isMainFrame` are re-validated on arrival (defense in
+     depth). If the system WebView predates `WEB_MESSAGE_LISTENER` support,
+     no bridge is installed at all and `onError` fires once with
+     `message_bridge_not_supported`.
 4. **Fail closed.** Invalid allowlist entries are dropped (never widened),
    unparseable URLs are blocked, and unsupported features produce structured
    errors instead of silently degrading (see Android `ephemeral` below).
@@ -63,6 +75,12 @@ Both platforms:
   non-http(s) scheme inside a sub-frame is blocked and can never surface as a
   deep link.
 - No geolocation, no media-capture grants, no downloads.
+- Renderer/content-process death is contained: Android returns `true` from
+  `onRenderProcessGone` (the default would kill the entire app process), tears
+  the dead WebView down, and emits `android_render_process_gone`; iOS emits
+  `ios_content_process_terminated` from
+  `webViewWebContentProcessDidTerminate`. In both cases session state in
+  memory is gone; call `reload()` to recover.
 
 ### Sessions
 
