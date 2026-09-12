@@ -1,5 +1,5 @@
 buildscript {
-  ext.SecureWebview = [
+  ext.SecureWebView = [
     kotlinVersion: "2.0.21",
     minSdkVersion: 24,
     compileSdkVersion: 36
@@ -10,7 +10,7 @@ buildscript {
       return rootProject.ext.get(prop)
     }
 
-    return SecureWebview[prop]
+    return SecureWebView[prop]
   }
 
   repositories {
