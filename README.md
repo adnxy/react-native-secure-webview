@@ -31,6 +31,16 @@ cd ios && pod install
 
 No manual native setup is required. The Fabric component is registered through Codegen on both platforms.
 
+### Jest
+
+The package ships untranspiled ESM. If your tests import components that use it, allow it through Jest's transform in your `jest.config.js`:
+
+```js
+transformIgnorePatterns: [
+  'node_modules/(?!(?:react-native|@react-native|react-native-secure-webview)/)',
+],
+```
+
 ## Usage
 
 ```tsx
