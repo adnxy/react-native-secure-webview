@@ -1,10 +1,15 @@
 /**
  * SecureWebView example app.
  *
- * A single screen with preset scenarios, one per library behavior:
- * allowed/blocked navigation, deep-link interception, blocked schemes,
- * Web→RN messaging, imperative commands, session modes, and structured
- * errors. Every callback is appended to the on-screen event log.
+ * Two modes, switchable from the top bar:
+ *
+ *  - Showcase: a realistic fintech screen embedding TradingView, origin-locked
+ *    to a single origin, with a live security monitor and a simulated
+ *    compromise that demonstrates fail-closed behavior (TradingViewDemo.tsx).
+ *  - Playground: one preset tab per library behavior — allowed/blocked
+ *    navigation, deep-link interception, blocked schemes, Web→RN messaging,
+ *    imperative commands, session modes, and structured errors. Every
+ *    callback is appended to the on-screen event log.
  */
 import { useRef, useState } from 'react';
 import {
@@ -21,6 +26,7 @@ import {
   type SecureWebViewProps,
   type SecureWebViewRef,
 } from 'react-native-secure-webview';
+import TradingViewDemo from './TradingViewDemo';
 
 // The local demo page (deep links, blocked schemes, Web→RN messages).
 // Start it with `yarn demo-page` from the example/ directory.
@@ -103,7 +109,39 @@ type LogEntry = { id: number; kind: string; text: string };
 
 let nextLogId = 1;
 
+type Mode = 'showcase' | 'playground';
+
 export default function App() {
+  const [mode, setMode] = useState<Mode>('showcase');
+
+  return (
+    <SafeAreaView style={styles.root}>
+      <View style={styles.modeBar}>
+        {(
+          [
+            ['showcase', 'Showcase'],
+            ['playground', 'Playground'],
+          ] as const
+        ).map(([value, label]) => (
+          <Pressable
+            key={value}
+            onPress={() => setMode(value)}
+            style={[styles.modeTab, mode === value && styles.modeTabActive]}
+          >
+            <Text
+              style={[styles.modeText, mode === value && styles.modeTextActive]}
+            >
+              {label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+      {mode === 'showcase' ? <TradingViewDemo /> : <Playground />}
+    </SafeAreaView>
+  );
+}
+
+function Playground() {
   const webViewRef = useRef<SecureWebViewRef>(null);
   const [preset, setPreset] = useState<Preset>(PRESETS[0]!);
   const [log, setLog] = useState<LogEntry[]>([]);
@@ -121,7 +159,7 @@ export default function App() {
   };
 
   return (
-    <SafeAreaView style={styles.root}>
+    <View style={styles.playground}>
       <View style={styles.tabs}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {PRESETS.map((p) => (
@@ -187,7 +225,7 @@ export default function App() {
           </Text>
         ))}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -205,7 +243,23 @@ function kindStyle(kind: string) {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#1c1c27' },
+  root: { flex: 1, backgroundColor: '#131722' },
+  modeBar: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    paddingVertical: 6,
+    gap: 8,
+  },
+  modeTab: {
+    paddingVertical: 6,
+    paddingHorizontal: 18,
+    borderRadius: 16,
+    backgroundColor: '#1e222d',
+  },
+  modeTabActive: { backgroundColor: '#2962ff' },
+  modeText: { color: '#b2b5be', fontSize: 13, fontWeight: '700' },
+  modeTextActive: { color: '#ffffff' },
+  playground: { flex: 1, backgroundColor: '#1c1c27' },
   tabs: { paddingVertical: 8, paddingHorizontal: 6 },
   tab: {
     paddingVertical: 8,
